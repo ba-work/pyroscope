@@ -28,10 +28,20 @@ func NewLogSpanParametersWrapper(client querierv1connect.QuerierServiceClient, l
 	}
 }
 
+// logWithRequestMetadata returns a SpanLogger enriched with request metadata.
+// Add new extractions here to make them available on all query log lines.
+func (l LogSpanParametersWrapper) logWithRequestMetadata(ctx context.Context, req connect.AnyRequest) *SpanLogger {
+	logger := l.logger
+	if ua := req.Header().Get("User-Agent"); ua != "" {
+		logger = log.With(logger, "user_agent", ua)
+	}
+	return FromContext(ctx, logger)
+}
+
 func (l LogSpanParametersWrapper) ProfileTypes(ctx context.Context, c *connect.Request[querierv1.ProfileTypesRequest]) (*connect.Response[querierv1.ProfileTypesResponse], error) {
 	spanName := "ProfileTypes"
 	sp, ctx := tracing.StartSpanFromContext(ctx, spanName)
-	level.Info(FromContext(ctx, l.logger)).Log(
+	level.Info(l.logWithRequestMetadata(ctx, c)).Log(
 		"method", spanName,
 		"start", model.Time(c.Msg.Start).Time().String(),
 		"end", model.Time(c.Msg.End).Time().String(),
@@ -45,7 +55,7 @@ func (l LogSpanParametersWrapper) ProfileTypes(ctx context.Context, c *connect.R
 func (l LogSpanParametersWrapper) LabelValues(ctx context.Context, c *connect.Request[typesv1.LabelValuesRequest]) (*connect.Response[typesv1.LabelValuesResponse], error) {
 	spanName := "LabelValues"
 	sp, ctx := tracing.StartSpanFromContext(ctx, spanName)
-	level.Info(FromContext(ctx, l.logger)).Log(
+	level.Info(l.logWithRequestMetadata(ctx, c)).Log(
 		"method", spanName,
 		"start", model.Time(c.Msg.Start).Time().String(),
 		"end", model.Time(c.Msg.End).Time().String(),
@@ -61,7 +71,7 @@ func (l LogSpanParametersWrapper) LabelValues(ctx context.Context, c *connect.Re
 func (l LogSpanParametersWrapper) LabelNames(ctx context.Context, c *connect.Request[typesv1.LabelNamesRequest]) (*connect.Response[typesv1.LabelNamesResponse], error) {
 	spanName := "LabelNames"
 	sp, ctx := tracing.StartSpanFromContext(ctx, spanName)
-	level.Info(FromContext(ctx, l.logger)).Log(
+	level.Info(l.logWithRequestMetadata(ctx, c)).Log(
 		"method", spanName,
 		"start", model.Time(c.Msg.Start).Time().String(),
 		"end", model.Time(c.Msg.End).Time().String(),
@@ -76,7 +86,7 @@ func (l LogSpanParametersWrapper) LabelNames(ctx context.Context, c *connect.Req
 func (l LogSpanParametersWrapper) Series(ctx context.Context, c *connect.Request[querierv1.SeriesRequest]) (*connect.Response[querierv1.SeriesResponse], error) {
 	spanName := "Series"
 	sp, ctx := tracing.StartSpanFromContext(ctx, spanName)
-	level.Info(FromContext(ctx, l.logger)).Log(
+	level.Info(l.logWithRequestMetadata(ctx, c)).Log(
 		"method", spanName,
 		"start", model.Time(c.Msg.Start).Time().String(),
 		"end", model.Time(c.Msg.End).Time().String(),
@@ -92,7 +102,7 @@ func (l LogSpanParametersWrapper) Series(ctx context.Context, c *connect.Request
 func (l LogSpanParametersWrapper) SelectMergeStacktraces(ctx context.Context, c *connect.Request[querierv1.SelectMergeStacktracesRequest]) (*connect.Response[querierv1.SelectMergeStacktracesResponse], error) {
 	spanName := "SelectMergeStacktraces"
 	sp, ctx := tracing.StartSpanFromContext(ctx, spanName)
-	level.Info(FromContext(ctx, l.logger)).Log(
+	level.Info(l.logWithRequestMetadata(ctx, c)).Log(
 		"method", spanName,
 		"start", model.Time(c.Msg.Start).Time().String(),
 		"end", model.Time(c.Msg.End).Time().String(),
@@ -111,7 +121,7 @@ func (l LogSpanParametersWrapper) SelectMergeStacktraces(ctx context.Context, c 
 func (l LogSpanParametersWrapper) SelectMergeSpanProfile(ctx context.Context, c *connect.Request[querierv1.SelectMergeSpanProfileRequest]) (*connect.Response[querierv1.SelectMergeSpanProfileResponse], error) {
 	spanName := "SelectMergeSpanProfile"
 	sp, ctx := tracing.StartSpanFromContext(ctx, spanName)
-	level.Info(FromContext(ctx, l.logger)).Log(
+	level.Info(l.logWithRequestMetadata(ctx, c)).Log(
 		"method", spanName,
 		"start", model.Time(c.Msg.Start).Time().String(),
 		"end", model.Time(c.Msg.End).Time().String(),
@@ -129,7 +139,7 @@ func (l LogSpanParametersWrapper) SelectMergeSpanProfile(ctx context.Context, c 
 func (l LogSpanParametersWrapper) SelectMergeProfile(ctx context.Context, c *connect.Request[querierv1.SelectMergeProfileRequest]) (*connect.Response[profilev1.Profile], error) {
 	spanName := "SelectMergeProfile"
 	sp, ctx := tracing.StartSpanFromContext(ctx, spanName)
-	level.Info(FromContext(ctx, l.logger)).Log(
+	level.Info(l.logWithRequestMetadata(ctx, c)).Log(
 		"method", spanName,
 		"start", model.Time(c.Msg.Start).Time().String(),
 		"end", model.Time(c.Msg.End).Time().String(),
@@ -148,7 +158,7 @@ func (l LogSpanParametersWrapper) SelectMergeProfile(ctx context.Context, c *con
 func (l LogSpanParametersWrapper) SelectSeries(ctx context.Context, c *connect.Request[querierv1.SelectSeriesRequest]) (*connect.Response[querierv1.SelectSeriesResponse], error) {
 	spanName := "SelectSeries"
 	sp, ctx := tracing.StartSpanFromContext(ctx, spanName)
-	level.Info(FromContext(ctx, l.logger)).Log(
+	level.Info(l.logWithRequestMetadata(ctx, c)).Log(
 		"method", spanName,
 		"start", model.Time(c.Msg.Start).Time().String(),
 		"end", model.Time(c.Msg.End).Time().String(),
@@ -170,7 +180,7 @@ func (l LogSpanParametersWrapper) SelectSeries(ctx context.Context, c *connect.R
 func (l LogSpanParametersWrapper) SelectHeatmap(ctx context.Context, c *connect.Request[querierv1.SelectHeatmapRequest]) (*connect.Response[querierv1.SelectHeatmapResponse], error) {
 	spanName := "SelectHeatmap"
 	sp, ctx := tracing.StartSpanFromContext(ctx, spanName)
-	level.Info(FromContext(ctx, l.logger)).Log(
+	level.Info(l.logWithRequestMetadata(ctx, c)).Log(
 		"method", spanName,
 		"start", model.Time(c.Msg.Start).Time().String(),
 		"end", model.Time(c.Msg.End).Time().String(),
@@ -202,7 +212,7 @@ func (l LogSpanParametersWrapper) Diff(ctx context.Context, c *connect.Request[q
 		right = c.Msg.Right
 	}
 
-	level.Info(FromContext(ctx, l.logger)).Log(
+	level.Info(l.logWithRequestMetadata(ctx, c)).Log(
 		"method", spanName,
 		"left_start", model.Time(left.Start).Time().String(),
 		"left_end", model.Time(left.End).Time().String(),
@@ -234,7 +244,7 @@ func (l LogSpanParametersWrapper) GetProfileStats(ctx context.Context, c *connec
 func (l LogSpanParametersWrapper) AnalyzeQuery(ctx context.Context, c *connect.Request[querierv1.AnalyzeQueryRequest]) (*connect.Response[querierv1.AnalyzeQueryResponse], error) {
 	spanName := "AnalyzeQuery"
 	sp, ctx := tracing.StartSpanFromContext(ctx, spanName)
-	level.Info(FromContext(ctx, l.logger)).Log(
+	level.Info(l.logWithRequestMetadata(ctx, c)).Log(
 		"method", spanName,
 		"start", model.Time(c.Msg.Start).Time().String(),
 		"end", model.Time(c.Msg.End).Time().String(),
