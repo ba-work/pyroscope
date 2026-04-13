@@ -13,7 +13,6 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/hashicorp/raft"
-	"github.com/opentracing/opentracing-go"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.etcd.io/bbolt"
 	"go.etcd.io/bbolt/errors"
@@ -61,7 +60,7 @@ func (cfg *Config) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
 	f.StringVar(&cfg.SnapshotCompression, prefix+"snapshot-compression", "zstd", "Compression algorithm to use for snapshots. Supported compressions: zstd.")
 	f.IntVar(&cfg.SnapshotRateLimit, prefix+"snapshot-rate-limit", 15, "Rate limit for snapshot writer in MB/s.")
 	f.BoolVar(&cfg.SnapshotCompactOnRestore, prefix+"snapshot-compact-on-restore", false, "Compact the database on restore.")
-	f.StringVar(&cfg.DataDir, prefix+"data-dir", "./data-metastore/data", "Directory to store the data.")
+	f.StringVar(&cfg.DataDir, prefix+"data-dir", "./data/v2/metastore/data", "Directory to store the data.")
 }
 
 // FSM implements the raft.FSM interface.
@@ -282,7 +281,7 @@ func (fsm *FSM) applyCommand(cmd *raft.Log) any {
 		panic(fmt.Sprint("failed to begin write transaction:", err))
 	}
 
-	txSpan, ctx := opentracing.StartSpanFromContext(ctx, "boltdb.transaction")
+	txSpan, ctx := tracing.StartSpanFromContext(ctx, "boltdb.transaction")
 	txSpan.SetTag("writable", rawTx.Writable())
 	tx := newTracingTx(rawTx, txSpan, ctx)
 

@@ -1,6 +1,9 @@
 # Default values for pyroscope.
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
+global:
+  # -- Overrides the Docker registry globally for all images
+  imageRegistry: null
 
 
 pyroscope:
@@ -13,6 +16,7 @@ pyroscope:
   cluster_domain: .cluster.local.
 
   image:
+    registry: ''
     repository: grafana/pyroscope
     pullPolicy: IfNotPresent
     # Allows to override the image tag, which defaults to the appVersion in the chart metadata
@@ -529,6 +533,23 @@ ingress:
   #   - localhost
   # tls:
   #   - secretName: certificate
+
+httpRoute:
+  enabled: false
+  gateway:
+    name: ""
+    namespace: ""
+    # -- Optional to specify listener's name.
+    sectionName: null
+  # -- Additional labels to add to HTTPRoute resource.
+  labels: {}
+  # -- Additional annotations to add to HTTPRoute resource.
+  annotations: {}
+  hostnames: []
+  # -- Timeout settings to add to each rule in HTTPRoute resource.
+  # https://gateway-api.sigs.k8s.io/reference/spec/#httproutetimeouts.
+  timeouts: {}
+   # request: 0s
 
 # ServiceMonitor configuration
 serviceMonitor:

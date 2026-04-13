@@ -186,7 +186,7 @@ func bucketInspectV2(ctx context.Context, params *bucketParams, paths []string) 
 		lst.renderInspectTable(ctx)
 
 		sb := new(strings.Builder)
-		tbl := tablewriter.NewWriter(output(ctx))
+		tbl := newTableWriter(output(ctx))
 		tbl.SetAutoWrapText(false)
 		tbl.SetHeader([]string{"Tenant", "Dataset Name", "From", "Duration", "Size", "Labels"})
 
@@ -216,7 +216,7 @@ type bucketList struct {
 
 func (b bucketList) renderInspectTable(ctx context.Context) {
 	if b.tbl == nil {
-		b.tbl = tablewriter.NewWriter(output(ctx))
+		b.tbl = newTableWriter(output(ctx))
 	} else {
 		b.tbl.ClearRows()
 	}
@@ -239,7 +239,7 @@ func (b bucketList) renderInspectTable(ctx context.Context) {
 
 func (b bucketList) renderListTable(ctx context.Context) {
 	if b.tbl == nil {
-		b.tbl = tablewriter.NewWriter(output(ctx))
+		b.tbl = newTableWriter(output(ctx))
 	} else {
 		b.tbl.ClearRows()
 	}

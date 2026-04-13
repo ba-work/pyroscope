@@ -339,6 +339,21 @@
       "v2": false
     }
   },
+  "global": {
+    "imageRegistry": null
+  },
+  "httpRoute": {
+    "annotations": {},
+    "enabled": false,
+    "gateway": {
+      "name": "",
+      "namespace": "",
+      "sectionName": null
+    },
+    "hostnames": [],
+    "labels": {},
+    "timeouts": {}
+  },
   "ingress": {
     "annotations": {},
     "className": "",
@@ -394,6 +409,7 @@
     },
     "image": {
       "pullPolicy": "IfNotPresent",
+      "registry": "",
       "repository": "grafana/pyroscope",
       "tag": ""
     },

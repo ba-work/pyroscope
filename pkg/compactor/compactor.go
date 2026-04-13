@@ -23,8 +23,7 @@ import (
 	"github.com/grafana/dskit/kv"
 	"github.com/grafana/dskit/ring"
 	"github.com/grafana/dskit/services"
-	"github.com/opentracing/opentracing-go"
-	"github.com/opentracing/opentracing-go/ext"
+	"github.com/grafana/dskit/tracing"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -100,6 +99,7 @@ type Config struct {
 	DeletionDelay              time.Duration `yaml:"deletion_delay" category:"advanced"`
 	TenantCleanupDelay         time.Duration `yaml:"tenant_cleanup_delay" category:"advanced"`
 	MaxCompactionTime          time.Duration `yaml:"max_compaction_time" category:"advanced"`
+	ShutdownTimeout            time.Duration `yaml:"shutdown_timeout" category:"advanced"`
 	NoBlocksFileCleanupEnabled bool          `yaml:"no_blocks_file_cleanup_enabled" category:"experimental"`
 	DownsamplerEnabled         bool          `yaml:"downsampler_enabled" category:"advanced"`
 
@@ -142,6 +142,7 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet, logger log.Logger) {
 	f.StringVar(&cfg.DataDir, "compactor.data-dir", "./data-compactor", "Directory to temporarily store blocks during compaction. This directory is not required to be persisted between restarts.")
 	f.DurationVar(&cfg.CompactionInterval, "compactor.compaction-interval", 30*time.Minute, "The frequency at which the compaction runs")
 	f.DurationVar(&cfg.MaxCompactionTime, "compactor.max-compaction-time", time.Hour, "Max time for starting compactions for a single tenant. After this time no new compactions for the tenant are started before next compaction cycle. This can help in multi-tenant environments to avoid single tenant using all compaction time, but also in single-tenant environments to force new discovery of blocks more often. 0 = disabled.")
+	f.DurationVar(&cfg.ShutdownTimeout, "compactor.shutdown-timeout", 0, "Maximum time to wait for in-flight cleanup and ring operations to finish during shutdown. If the timeout is reached, the compactor will forcefully stop. 0 = no timeout (wait indefinitely).")
 	f.IntVar(&cfg.CompactionRetries, "compactor.compaction-retries", 3, "How many times to retry a failed compaction within a single compaction run.")
 	f.IntVar(&cfg.CompactionConcurrency, "compactor.compaction-concurrency", 1, "Max number of concurrent compactions running.")
 	f.DurationVar(&cfg.CompactionWaitPeriod, "compactor.first-level-compaction-wait-period", 25*time.Minute, "How long the compactor waits before compacting first-level blocks that are uploaded by the ingesters. This configuration option allows for the reduction of cases where the compactor begins to compact blocks before all ingesters have uploaded their blocks to the storage.")
@@ -523,8 +524,15 @@ func newRingAndLifecycler(cfg RingConfig, logger log.Logger, reg prometheus.Regi
 
 func (c *MultitenantCompactor) stopping(_ error) error {
 	ctx := context.Background()
+	if c.compactorCfg.ShutdownTimeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, c.compactorCfg.ShutdownTimeout)
+		defer cancel()
+	}
 
-	services.StopAndAwaitTerminated(ctx, c.blocksCleaner) //nolint:errcheck
+	if err := services.StopAndAwaitTerminated(ctx, c.blocksCleaner); err != nil {
+		level.Warn(c.logger).Log("msg", "error stopping blocks cleaner", "err", err)
+	}
 	if c.ringSubservices != nil {
 		return services.StopManagerAndAwaitStopped(ctx, c.ringSubservices)
 	}
@@ -551,7 +559,7 @@ func (c *MultitenantCompactor) running(ctx context.Context) error {
 }
 
 func (c *MultitenantCompactor) compactUsers(ctx context.Context) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "CompactUsers")
+	sp, ctx := tracing.StartSpanFromContext(ctx, "CompactUsers")
 	defer sp.Finish()
 
 	succeeded := false
@@ -568,7 +576,7 @@ func (c *MultitenantCompactor) compactUsers(ctx context.Context) {
 		} else {
 			c.compactionRunsErred.Inc()
 		}
-		sp.LogKV("error_count", compactionErrorCount)
+		sp.SetTag("error_count", compactionErrorCount)
 
 		// Reset progress metrics once done.
 		c.compactionRunDiscoveredTenants.Set(0)
@@ -586,7 +594,7 @@ func (c *MultitenantCompactor) compactUsers(ctx context.Context) {
 		}
 		return
 	}
-	sp.LogKV("discovered_user_count", len(users))
+	sp.SetTag("discovered_user_count", len(users))
 	level.Info(c.logger).Log("msg", "discovered users from bucket", "users", len(users))
 	c.compactionRunDiscoveredTenants.Set(float64(len(users)))
 
@@ -600,7 +608,7 @@ func (c *MultitenantCompactor) compactUsers(ctx context.Context) {
 	// Keep track of users owned by this shard, so that we can delete the local files for all other users.
 	ownedUsers := map[string]struct{}{}
 	defer func() {
-		sp.LogKV("owned_user_count", len(ownedUsers))
+		sp.SetTag("owned_user_count", len(ownedUsers))
 	}()
 	for _, userID := range users {
 		// Ensure the context has not been canceled (ie. compactor shutdown has been triggered).
@@ -692,13 +700,15 @@ func (c *MultitenantCompactor) compactUserWithRetries(ctx context.Context, userI
 	})
 
 	for retries.Ongoing() {
-		sp, ctx := opentracing.StartSpanFromContext(ctx, "CompactUser", opentracing.Tag{Key: "tenantID", Value: userID})
+		sp, ctx := tracing.StartSpanFromContext(ctx, "CompactUser")
+		sp.SetTag("tenantID", userID)
 		lastErr = c.compactUser(ctx, userID)
 		if lastErr == nil {
 			sp.Finish()
 			return nil
 		}
-		ext.LogError(sp, lastErr)
+		sp.LogError(lastErr)
+		sp.SetError()
 		sp.Finish()
 		retries.Wait()
 	}
@@ -781,7 +791,7 @@ func (c *MultitenantCompactor) compactUser(ctx context.Context, userID string) e
 }
 
 func (c *MultitenantCompactor) discoverUsersWithRetries(ctx context.Context) ([]string, error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "DiscoverUsers")
+	sp, ctx := tracing.StartSpanFromContext(ctx, "DiscoverUsers")
 	defer sp.Finish()
 
 	var lastErr error

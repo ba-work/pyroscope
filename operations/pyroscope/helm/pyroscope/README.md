@@ -1,6 +1,6 @@
 # pyroscope
 
-![Version: 1.18.1](https://img.shields.io/badge/Version-1.18.1-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.18.0](https://img.shields.io/badge/AppVersion-1.18.0-informational?style=flat-square)
+![Version: 1.20.3](https://img.shields.io/badge/Version-1.20.3-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.20.3](https://img.shields.io/badge/AppVersion-1.20.3-informational?style=flat-square)
 
 🔥 horizontally-scalable, highly-available, multi-tenant continuous profiling aggregation system
 
@@ -35,6 +35,15 @@
 | architecture.storage.migration.segmentWriterWeight | float | `1` | Specifies the fraction [0:1] that should be send to the v2 write path / segment-writer in combined mode. 0 means no traffics is sent to segment-writer. 1 means 100% of requests are sent to segment-writer. |
 | architecture.storage.v1 | bool | `true` | Enable v1 storage layer. |
 | architecture.storage.v2 | bool | `false` | Enable v2 storage layer. |
+| global.imageRegistry | string | `nil` | Overrides the Docker registry globally for all images |
+| httpRoute.annotations | object | `{}` | Additional annotations to add to HTTPRoute resource. |
+| httpRoute.enabled | bool | `false` |  |
+| httpRoute.gateway.name | string | `""` |  |
+| httpRoute.gateway.namespace | string | `""` |  |
+| httpRoute.gateway.sectionName | string | `nil` | Optional to specify listener's name. |
+| httpRoute.hostnames | list | `[]` |  |
+| httpRoute.labels | object | `{}` | Additional labels to add to HTTPRoute resource. |
+| httpRoute.timeouts | object | `{}` | Timeout settings to add to each rule in HTTPRoute resource. https://gateway-api.sigs.k8s.io/reference/spec/#httproutetimeouts. |
 | ingress.annotations | object | `{}` |  |
 | ingress.className | string | `""` |  |
 | ingress.enabled | bool | `false` |  |
@@ -59,6 +68,7 @@
 | pyroscope.grpc.port | int | `9095` |  |
 | pyroscope.grpc.port_name | string | `"grpc"` |  |
 | pyroscope.image.pullPolicy | string | `"IfNotPresent"` |  |
+| pyroscope.image.registry | string | `""` |  |
 | pyroscope.image.repository | string | `"grafana/pyroscope"` |  |
 | pyroscope.image.tag | string | `""` |  |
 | pyroscope.imagePullSecrets | list | `[]` |  |
